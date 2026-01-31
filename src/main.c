@@ -49,10 +49,12 @@ typedef enum {
     ls
 }Commands;
 
-
+//TODO: As of planned now, all commands have either 1 or 2 parameters as input.
+//      This may change, so there needs to be a dynamic array of parameters.
 typedef struct {
     char command[MAX_COMMAND_SIZE];
-    char* parameters[MAX_PARAMETER_LENGTH];
+    char parameter1[MAX_PARAMETER_LENGTH];
+    char parameter2[MAX_PARAMETER_LENGTH];
 }Tokenized;
 
 
@@ -133,39 +135,59 @@ int make_directory(Node* current, const char name[MAX_SIZE]) {
 * Called when user uses command "ls"
 * Lists all contents of current node
 */
-int list_directory(Node* current) {
+void list_directory(Node* current) {
+    printf("\n");
     for (size_t i = 0; i < current->ch_count; i++) {
         Node* child = current->children[i];
-        printf("%s\n", child->name);
+        printf("- ~ - ~ -   %s\n", child->name);
     }
+    printf("\n");
 }
 
 /**
 * Tokenizes a given string into its commands and its parameters
 */
-int tokenize_input(char userInput[MAX_INPUT_SIZE]) {
-    //Tokenized* tokenized = calloc(1, sizeof(Tokenized));
+Tokenized* tokenize_input(char userInput[MAX_INPUT_SIZE]) {
+    Tokenized* tokenized = calloc(1, sizeof(Tokenized));
+    if (!tokenized) return NULL;
 
     char* token;
     char* whiteSpace = " \t\n\f\r\v";
     token = strtok(userInput, whiteSpace);
 
     int isCommand = 1;
+    int p_index = 0;
 
     while (token != NULL) {
         if(isCommand) {
-            printf("Command = %s\n", token);
             isCommand = 0;
+            strcpy(tokenized->command, token);
         }
 
         else {
-            printf("Parameter = %s\n\n", token);
+            if (p_index < 1) strcpy(tokenized->parameter1, token);
+            else strcpy(tokenized->parameter2, token);
+            p_index++;
+
         }
 
         token = strtok(NULL, whiteSpace);
     }
 
-    return 0;
+    return tokenized;
+}
+
+void execute_command(Navigation* navigation, Tokenized* tokenized) {
+    char command[MAX_COMMAND_SIZE];
+    strcpy(command, tokenized->command);
+
+    if (strcmp(command, "mkdir") == 0) {
+        make_directory(navigation->current, tokenized->parameter1);
+    }
+
+    else if (strcmp(command, "ls") == 0) {
+        list_directory(navigation->current);
+    }
 }
 
 
@@ -175,16 +197,18 @@ int vifima_loop(Navigation* navigation) {
     fgets(userInput, MAX_INPUT_SIZE, stdin);
     userInput[strcspn(userInput, "\n")] = 0;
 
-    int ret = tokenize_input(userInput);
+    Tokenized* tokenized = tokenize_input(userInput);
     memset(userInput,0,strlen(userInput));
+    execute_command(navigation, tokenized);
 
     while(strcmp(userInput, "exit") != 0) {
         printf("[%s @ %s]$ ", navigation->username, navigation->root->name);
         fgets(userInput, MAX_INPUT_SIZE, stdin);
         userInput[strcspn(userInput, "\n")] = 0;
 
-        int ret = tokenize_input(userInput);
+        tokenized = tokenize_input(userInput);
         memset(userInput,0,strlen(userInput));
+        execute_command(navigation, tokenized);
     }
 
     printf("Exiting programm");
@@ -195,6 +219,7 @@ int vifima_loop(Navigation* navigation) {
 
 int main() {
     Node* root = calloc(1, sizeof(Node));
+
     if (!root) return error_calloc();
     strcpy(root->name, "root");
 
@@ -208,6 +233,7 @@ int main() {
     if (!navigation) return error_calloc();
     strcpy(navigation->username, username);
     navigation->root = root;
+    navigation->current = root;
 
     clear_screen();
 
