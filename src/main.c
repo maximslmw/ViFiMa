@@ -3,6 +3,10 @@
 #include <string.h>
 
 #define MAX_SIZE 15
+#define MAX_INPUT_SIZE 100
+#define MAX_COMMAND_SIZE 10
+#define MAX_NAME_LENGTH 20
+#define MAX_PARAMETER_LENGTH 20
 
 typedef struct Node Node;
 
@@ -32,26 +36,37 @@ struct Node{
 
 };
 
+
 typedef struct {
     char username[MAX_SIZE];
     Node* root;
     Node* current;
 }Navigation;
 
+
 typedef enum {
     mkdir,
     ls
 }Commands;
+
+
+typedef struct {
+    char command[MAX_COMMAND_SIZE];
+    char* parameters[MAX_PARAMETER_LENGTH];
+}Tokenized;
+
 
 int error_realloc() {
     fprintf(stderr, "Error: Couldn't reallocate memory!\n");
     return 1;
 }
 
+
 int error_calloc() {
     fprintf(stderr, "Error: Couldn't allocate memory!\n");
     return 1;
 }
+
 
 /**
 * Function for appending a new node as a child node to a given node
@@ -78,6 +93,7 @@ int da_append_child(Node* parent, Node* child) {
     return 0;
 }
 
+
 /**
 * Given a name, tries to find the node with that name.
 * If no node with that name exists, returns null pointer
@@ -95,6 +111,7 @@ Node* getNodeFromName(Node* current, const char name[MAX_SIZE]) {
     return NULL;
 }
 
+
 /**
 * Given the current node and a name, creates a new node with the given name
 */
@@ -110,6 +127,7 @@ int make_directory(Node* current, const char name[MAX_SIZE]) {
     return ret;
 }
 
+
 //TODO: Check for empty
 /**
 * Called when user uses command "ls"
@@ -122,14 +140,57 @@ int list_directory(Node* current) {
     }
 }
 
+/**
+* Tokenizes a given string into its commands and its parameters
+*/
+int tokenize_input(char userInput[MAX_INPUT_SIZE]) {
+    //Tokenized* tokenized = calloc(1, sizeof(Tokenized));
 
-int vifima_loop(Navigation* navigation) {
-    printf("[%s @ %s]$ ", navigation->username, navigation->root->name);
+    char* token;
+    char* whiteSpace = " \t\n\f\r\v";
+    token = strtok(userInput, whiteSpace);
+
+    int isCommand = 1;
+
+    while (token != NULL) {
+        if(isCommand) {
+            printf("Command = %s\n", token);
+            isCommand = 0;
+        }
+
+        else {
+            printf("Parameter = %s\n\n", token);
+        }
+
+        token = strtok(NULL, whiteSpace);
+    }
 
     return 0;
 }
 
 
+int vifima_loop(Navigation* navigation) {
+    char userInput[MAX_INPUT_SIZE] = {0};
+    printf("[%s @ %s]$ ", navigation->username, navigation->root->name);
+    fgets(userInput, MAX_INPUT_SIZE, stdin);
+    userInput[strcspn(userInput, "\n")] = 0;
+
+    int ret = tokenize_input(userInput);
+    memset(userInput,0,strlen(userInput));
+
+    while(strcmp(userInput, "exit") != 0) {
+        printf("[%s @ %s]$ ", navigation->username, navigation->root->name);
+        fgets(userInput, MAX_INPUT_SIZE, stdin);
+        userInput[strcspn(userInput, "\n")] = 0;
+
+        int ret = tokenize_input(userInput);
+        memset(userInput,0,strlen(userInput));
+    }
+
+    printf("Exiting programm");
+
+    return 0;
+}
 
 
 int main() {
@@ -139,7 +200,9 @@ int main() {
 
     char username[MAX_SIZE] = {0};
     printf("Enter your name (%d characters max): ", MAX_SIZE);
-    scanf("%s", &username);
+
+    fgets(username, MAX_INPUT_SIZE, stdin);
+    username[strcspn(username, "\n")] = 0;
 
     Navigation* navigation = calloc(1, sizeof(Navigation));
     if (!navigation) return error_calloc();
